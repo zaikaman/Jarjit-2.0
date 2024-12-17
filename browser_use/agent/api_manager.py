@@ -2,7 +2,10 @@ from typing import List
 import os
 from threading import Lock
 from dotenv import load_dotenv
+import logging
 import json
+
+logger = logging.getLogger(__name__)
 
 class APIKeyManager:
     def __init__(self):
@@ -16,14 +19,22 @@ class APIKeyManager:
     
     def _load_api_keys(self) -> List[str]:
         """Load API keys from environment variables"""
-        keys_str = os.getenv('GITHUB_API_KEYS', '[]')
+        keys_str = os.getenv('GITHUB_API_KEYS', '')
+        logger.info(f"Raw keys string: {keys_str}")
+        
+        if not keys_str:
+            raise ValueError("No API keys found in environment variables")
+        
         try:
             keys = json.loads(keys_str)
-            if not keys or not isinstance(keys, list):
-                raise ValueError("API keys must be a non-empty array")
+            if not isinstance(keys, list):
+                raise ValueError("API keys must be a list")
+            if not keys:
+                raise ValueError("No API keys found")
             return keys
-        except json.JSONDecodeError:
-            raise ValueError("Invalid JSON format for API keys in environment variable")
+        except json.JSONDecodeError as e:
+            logger.error(f"Failed to parse JSON: {e}")
+            raise ValueError(f"Invalid JSON format in environment variable: {e}")
         
     def _load_rate_limited_keys(self):
         """Load previously rate-limited keys from file if it exists"""
